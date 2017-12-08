@@ -27,12 +27,11 @@ newtype Entropy = Entropy { _bytes :: B.ByteString }
 data Strength = S128 | S160 | S192 | S224 | S256
 
 bitCount :: Strength -> Int
-bitCount x = case x of
-  S128 -> 128
-  S160 -> 160
-  S192 -> 192
-  S224 -> 224
-  S256 -> 256
+bitCount = \case S128 -> 128
+                 S160 -> 160
+                 S192 -> 192
+                 S224 -> 224
+                 S256 -> 256
 
 
 -- CS = ENT / 32
