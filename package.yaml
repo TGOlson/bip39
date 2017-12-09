@@ -14,6 +14,7 @@ extra-source-files:
 ghc-options: -Wall
 
 default-extensions:
+  - DeriveGeneric
   - LambdaCase
   - OverloadedStrings
   - ScopedTypeVariables
@@ -26,6 +27,7 @@ dependencies:
   - containers
   - cryptohash
   - memory
+  - optparse-generic
   - random
   - word8
 
@@ -34,6 +36,12 @@ library:
   exposed-modules:
     - Crypto.BIP39
     - Crypto.BIP39.WordList
+
+executables:
+  bip39:
+    source-dirs: exec
+    main: Main.hs
+    dependencies: bip39
 
 # tests:
 #   spec:

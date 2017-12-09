@@ -1,9 +1,13 @@
 module Crypto.BIP39
     ( Strength(..)
     , Entropy
+    , bytes
+    , fromBytes
     , generateEntropy
+    , generateEntropyStdGen
     , entropyToMnemonic
     , mnemonicToEntropy
+    , verifyChecksum
     ) where
 
 import           Control.Monad         (void)
@@ -21,8 +25,12 @@ import           System.Random
 
 import qualified Crypto.BIP39.WordList as WordList
 
+-- TODO: phantom type Entropy 'Strength
 newtype Entropy = Entropy { _bytes :: B.ByteString }
   deriving (Eq, Show)
+
+bytes :: Entropy -> B.ByteString
+bytes = _bytes
 
 data Strength = S128 | S160 | S192 | S224 | S256
 
@@ -48,10 +56,13 @@ bitCount = \case S128 -> 128
 
 -- API -------------------------------------------------------------------------------------------------------
 
-generateEntropy :: RandomGen g => Strength -> g -> Entropy
-generateEntropy strength gen = Entropy (bytes <> calcChecksum bytes)
+generateEntropyStdGen :: Strength -> IO Entropy
+generateEntropyStdGen strength = generateEntropy <$> newStdGen <*> return strength
+
+generateEntropy :: RandomGen g => g -> Strength -> Entropy
+generateEntropy gen strength = Entropy (bs <> calcChecksum bs)
   where
-    bytes = randomBytes (bitCount strength `div` 8) gen
+    bs = randomBytes (bitCount strength `div` 8) gen
 
 entropyToMnemonic :: Entropy -> [String]
 entropyToMnemonic = fmap (`Set.elemAt` WordList.english) . entropyToIndices
@@ -59,9 +70,13 @@ entropyToMnemonic = fmap (`Set.elemAt` WordList.english) . entropyToIndices
 mnemonicToEntropy :: [String] -> Entropy
 mnemonicToEntropy = indicesToBytes . seedToIndices
 
+fromBytes :: B.ByteString -> Maybe Entropy
+fromBytes bs = if B.length bs == 33 && verifyChecksum (Entropy bs)
+    then Just (Entropy bs)
+    else Nothing
 
--- TODO:
--- verifyChecksum :: Entropy -> Bool
+verifyChecksum :: Entropy -> Bool
+verifyChecksum (Entropy bs) = calcChecksum (B.take 32 bs) == B.drop 32 bs
 
 
 -- Utils -----------------------------------------------------------------------------------------------------
@@ -71,17 +86,17 @@ randomBytes x = B.pack . take x . randoms
 
 
 calcChecksum :: B.ByteString -> B.ByteString
-calcChecksum bytes = B.take x $ SHA256.hash bytes
+calcChecksum bs = B.take x $ SHA256.hash bs
   where
     -- TODO: need to take x bits
     -- this only works because it just happens to be a full byte
-    x = B.length bytes `div` 32
+    x = B.length bs `div` 32
 
 
 entropyToIndices :: Entropy -> [Int]
-entropyToIndices (Entropy bytes) = runGet (runBitGet bitGet) (L8.fromStrict bytes)
+entropyToIndices (Entropy bs) = runGet (runBitGet bitGet) (L8.fromStrict bs)
   where
-    x = (B.length bytes * 8) `div` 11
+    x = (B.length bs * 8) `div` 11
     bitGet = block $ sequenceA $ replicate x getInt11
     getInt11 = fromIntegral <$> word16be 11
 
