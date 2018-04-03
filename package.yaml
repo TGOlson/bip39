@@ -18,6 +18,9 @@ default-extensions:
   - LambdaCase
   - OverloadedStrings
   - ScopedTypeVariables
+  - KindSignatures
+  - DataKinds
+  - GADTs
 
 dependencies:
   - base >= 4.7 && < 5
@@ -34,7 +37,10 @@ dependencies:
 library:
   source-dirs: lib
   exposed-modules:
-    - Crypto.BIP39
+    - Crypto.BIP39.Entropy
+    - Crypto.BIP39.Entropy.Random
+    - Crypto.BIP39.Mnemonic
+    - Crypto.BIP39.Strength
     - Crypto.BIP39.WordList
 
 executables:
@@ -43,15 +49,14 @@ executables:
     main: Main.hs
     dependencies: bip39
 
-# tests:
-#   spec:
-#     main: Main.hs
-#     source-dirs:
-#       - test
-#     dependencies:
-#       - async
-#       - blockchain
-#       - deepseq
-#       - hspec
-#       - QuickCheck
-#       - quickcheck-instances
+tests:
+  spec:
+    main: Main.hs
+    source-dirs:
+      - test
+    dependencies:
+      - async
+      - bip39
+      - hspec
+      - QuickCheck
+      - quickcheck-instances

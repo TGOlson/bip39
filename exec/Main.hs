@@ -1,23 +1,28 @@
 module Main ( main ) where
 
-import qualified Data.ByteString as B
-import           Data.List
-import           Data.Maybe
-import           Options.Generic
+import Data.List
+import Data.Monoid
+import Options.Generic
+import System.Random
 
-import           Crypto.BIP39
+import Crypto.BIP39.Entropy.Random
+import Crypto.BIP39.Mnemonic
 
-data Command = Command { read :: Bool, file :: Maybe String }
+newtype Command = Command Int
   deriving (Generic, Show)
 
 instance ParseRecord Command
 
 main :: IO ()
-main = getRecord "BIP39" >>= \case
-    Command False Nothing     -> generateEntropyStdGen S256 >>= (printMnemonic . entropyToMnemonic)
-    Command False (Just path) -> generateEntropyStdGen S256 >>= (B.writeFile path . bytes)
-    Command True  (Just path) -> B.readFile path >>= (printMnemonic . entropyToMnemonic . toEntropy)
-    Command True Nothing      -> error "Path required to read seed"
+main = do
+    gen <- newStdGen
+
+    getRecord "BIP39" >>= \case
+        Command 128 -> printMnemonic $ mnemonic (genEntropy128 gen)
+        Command 160 -> printMnemonic $ mnemonic (genEntropy160 gen)
+        Command 192 -> printMnemonic $ mnemonic (genEntropy192 gen)
+        Command 224 -> printMnemonic $ mnemonic (genEntropy224 gen)
+        Command 256 -> printMnemonic $ mnemonic (genEntropy256 gen)
+        Command x   -> error $ "Invalid strength " <> show x
   where
-    printMnemonic = putStrLn . intercalate "\n"
-    toEntropy = fromMaybe (error "Invalid bytes") . fromBytes
+    printMnemonic = putStrLn . intercalate "\n" . fmap show . toWords

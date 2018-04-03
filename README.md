@@ -2,6 +2,8 @@
 
 Haskell implementation of [the bip39 protocol](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki).
 
+Note: only the default wordlist is supported.
+
 ```
 CS = ENT / 32
 MS = (ENT + CS) / 11
