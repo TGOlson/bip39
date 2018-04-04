@@ -1,86 +1,61 @@
 module Crypto.BIP39.Entropy
     ( Entropy
-    , toBytes
-    , entropy128
-    , entropy160
-    , entropy192
-    , entropy224
-    , entropy256
+    , bytes
+    , strength
+    , entropy
+    , generateEntropyStdGen
+    , generateEntropy
+    , Strength(..)
+    , bitCount
+    , fromBitCount
     ) where
 
-import           Data.Bits
-import qualified Data.ByteString       as B
-import           Data.Word
+import qualified Data.ByteString as B
+import           Data.Maybe
+import           System.Random
 
-import           Crypto.BIP39.Strength
-
-newtype Entropy a = Entropy { _bytes :: B.ByteString }
+data Entropy = Entropy { _bytes :: B.ByteString, _strength :: Strength }
   deriving (Eq, Show)
 
-toBytes :: Entropy a -> B.ByteString
-toBytes = _bytes
+bytes :: Entropy -> B.ByteString
+bytes = _bytes
 
-entropy128
-    :: Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Entropy Strength128
-entropy128 bs1 bs2 bs3 bs4 =
-    buildFromBytes [bs1, bs2, bs3, bs4]
+strength :: Entropy -> Strength
+strength = _strength
 
-entropy160
-    :: Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Entropy Strength160
-entropy160 bs1 bs2 bs3 bs4 bs5 =
-    buildFromBytes [bs1, bs2, bs3, bs4, bs5]
-
-entropy192
-    :: Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Entropy Strength192
-entropy192 bs1 bs2 bs3 bs4 bs5 bs6 =
-    buildFromBytes [bs1, bs2, bs3, bs4, bs5, bs6]
-
-entropy224
-    :: Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Entropy Strength224
-entropy224 bs1 bs2 bs3 bs4 bs5 bs6 bs7 =
-    buildFromBytes [bs1, bs2, bs3, bs4, bs5, bs6, bs7]
-
-entropy256
-    :: Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Word32
-    -> Entropy Strength256
-entropy256 bs1 bs2 bs3 bs4 bs5 bs6 bs7 bs8 =
-    buildFromBytes [bs1, bs2, bs3, bs4, bs5, bs6, bs7, bs8]
-
-buildFromBytes :: [Word32] -> Entropy a
-buildFromBytes word32s = Entropy bytes
+entropy :: B.ByteString -> Maybe Entropy
+entropy bs = Entropy bs <$> fromBitCount numBits
   where
-    bytes = B.pack (word32s >>= splitWord32)
+    numBits = B.length bs * 8
 
-splitWord32 :: Word32 -> [Word8]
-splitWord32 bytes = [fromOffset 24, fromOffset 16, fromOffset 8, fromOffset 0]
-  where
-    fromOffset x = foldl (\bs i -> if testBit bytes i then setBit bs (i - x) else bs) 0 [x .. x + 7]
+generateEntropyStdGen :: Strength -> IO Entropy
+generateEntropyStdGen str = generateEntropy <$> newStdGen <*> return str
+
+generateEntropy :: RandomGen g => g -> Strength -> Entropy
+generateEntropy gen str = fromMaybe (error "unexpected error generating entropy") $ entropy bs
+ where
+   bs = B.pack $ take (bitCount str `div` 8) (randoms gen)
+
+data Strength
+    = Strength128
+    | Strength160
+    | Strength192
+    | Strength224
+    | Strength256
+  deriving (Eq, Show)
+
+bitCount :: Strength -> Int
+bitCount = \case Strength128 -> 128
+                 Strength160 -> 160
+                 Strength192 -> 192
+                 Strength224 -> 224
+                 Strength256 -> 256
+
+fromBitCount :: Int -> Maybe Strength
+fromBitCount = \case
+    128 -> Just Strength128
+    160 -> Just Strength160
+    192 -> Just Strength192
+    224 -> Just Strength224
+    256 -> Just Strength256
+    _   -> Nothing

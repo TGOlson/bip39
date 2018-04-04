@@ -38,9 +38,7 @@ library:
   source-dirs: lib
   exposed-modules:
     - Crypto.BIP39.Entropy
-    - Crypto.BIP39.Entropy.Random
     - Crypto.BIP39.Mnemonic
-    - Crypto.BIP39.Strength
     - Crypto.BIP39.WordList
 
 executables:

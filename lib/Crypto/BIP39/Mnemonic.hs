@@ -2,8 +2,8 @@ module Crypto.BIP39.Mnemonic
     ( Mnemonic
     , toWords
     , mnemonic
-    -- , toEntropy
-    -- , verifyChecksum
+    , toEntropy
+    -- , fromWordList -- TODO: return maybe, verify checksum
     ) where
 
 import           Control.Monad
@@ -15,44 +15,58 @@ import           Data.Binary.Put       (runPut)
 import           Data.Bits
 import qualified Data.ByteString       as B
 import qualified Data.ByteString.Lazy  as L8
+import           Data.Maybe
 import           Data.Monoid
 import qualified Data.Set              as Set
+import           Data.Word
 
-import           Crypto.BIP39.Entropy
+import qualified Crypto.BIP39.Entropy  as Entropy
 import qualified Crypto.BIP39.WordList as WordList
 
-newtype Mnemonic a = Mnemonic { _mnemonic :: [WordList.BIP39Word] }
+newtype Mnemonic = Mnemonic { _words :: [WordList.BIP39Word] }
+  deriving (Eq, Show)
 
-toWords :: Mnemonic a -> [WordList.BIP39Word]
-toWords = _mnemonic
+toWords :: Mnemonic -> [WordList.BIP39Word]
+toWords = _words
 
-mnemonic :: Entropy a -> Mnemonic a
+mnemonic :: Entropy.Entropy -> Mnemonic
 mnemonic entropy = Mnemonic $ (`Set.elemAt` WordList.wordList) <$> indices
   where
-    bytes = toBytes entropy
+    bytes = Entropy.bytes entropy
     checksum = calcChecksum bytes
     indices = bytesToIndices (bytes <> checksum)
 
--- toEntropy :: Mnemonic a -> Entropy a
--- toEntropy = indicesToBytes . seedToIndices . _mnemonic
---
--- seedToIndices :: [WordList.BIP39Word] -> [Int]
--- seedToIndices ws = (`Set.findIndex` WordList.wordList) <$> ws
---
--- indicesToBytes :: [Int] -> Entropy a
--- indicesToBytes ixs = Entropy $ L8.toStrict $ runPut (runBitPut bitPut)
---   where
---     ws :: [Word16]
---     ws = fromIntegral <$> ixs
---
---     bitPut :: BitPut ()
---     bitPut = void $ sequence $ putWord16be 11 <$> ws
---
---
--- verifyChecksum :: Mnemonic a -> Bool
+toEntropy :: Mnemonic -> Entropy.Entropy
+toEntropy (Mnemonic ws) = forceEntropy entropyBytes
+  where
+    entropyBytes = B.take numBytesEntropy allBytes
+    numBytesEntropy = case length ws of
+        12 -> 16
+        15 -> 20
+        18 -> 24
+        21 -> 28
+        24 -> 32
+        _  -> error "unexpected poop"
+    allBytes = indicesToBytes (seedToIndices ws)
+    forceEntropy = fromMaybe (error "unexpected error converting back to entropy") . Entropy.entropy
+
+seedToIndices :: [WordList.BIP39Word] -> [Int]
+seedToIndices ws = (`Set.findIndex` WordList.wordList) <$> ws
+
+indicesToBytes :: [Int] -> B.ByteString
+indicesToBytes ixs = L8.toStrict $ runPut (runBitPut bitPut)
+  where
+    ws :: [Word16]
+    ws = fromIntegral <$> ixs
+
+    bitPut :: BitPut ()
+    bitPut = void $ sequence $ putWord16be 11 <$> ws
+
+
+-- verifyChecksum :: Mnemonic -> Bool
 -- verifyChecksum mn = calcChecksum (B.take 32 bytes) == B.drop 32 bytes
 --   where
---     bytes = toBytes (toEntropy mn)
+--     bytes = Entropy.bytes (toEntropy mn)
 
 
 calcChecksum :: B.ByteString -> B.ByteString
@@ -67,7 +81,7 @@ calcChecksum bytes = L8.toStrict $ runPut (runBitPut bitPut)
     bitPut = void $ sequence $ putBool <$> checksumBits
 
     checksumBits = take checksumNumBits $ reverse $ testBit firstByte <$> [0 .. 7]
-    checksumNumBits = (B.length bytes * 8) `div` 32 -- 256 / 32 = 8
+    checksumNumBits = (B.length bytes * 8) `div` 32
 
 
 bytesToIndices :: B.ByteString -> [Int]
