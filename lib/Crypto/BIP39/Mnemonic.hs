@@ -1,7 +1,7 @@
 module Crypto.BIP39.Mnemonic
     ( Mnemonic
     , toWords
-    , mnemonic
+    , toMnemonic
     , toEntropy
     -- , fromWordList -- TODO: return maybe, verify checksum
     ) where
@@ -29,8 +29,8 @@ newtype Mnemonic = Mnemonic { _words :: [WordList.BIP39Word] }
 toWords :: Mnemonic -> [WordList.BIP39Word]
 toWords = _words
 
-mnemonic :: Entropy.Entropy -> Mnemonic
-mnemonic entropy = Mnemonic $ (`Set.elemAt` WordList.wordList) <$> indices
+toMnemonic :: Entropy.Entropy -> Mnemonic
+toMnemonic entropy = Mnemonic $ (`Set.elemAt` WordList.wordList) <$> indices
   where
     bytes = Entropy.bytes entropy
     checksum = calcChecksum bytes
@@ -40,13 +40,7 @@ toEntropy :: Mnemonic -> Entropy.Entropy
 toEntropy (Mnemonic ws) = forceEntropy entropyBytes
   where
     entropyBytes = B.take numBytesEntropy allBytes
-    numBytesEntropy = case length ws of
-        12 -> 16
-        15 -> 20
-        18 -> 24
-        21 -> 28
-        24 -> 32
-        _  -> error "unexpected poop"
+    numBytesEntropy = length ws + (length ws `div` 3)
     allBytes = indicesToBytes (seedToIndices ws)
     forceEntropy = fromMaybe (error "unexpected error converting back to entropy") . Entropy.entropy
 

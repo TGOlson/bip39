@@ -15,14 +15,16 @@ instance ParseRecord Command
 
 main :: IO ()
 main = do
+    (Command numBits) <- getRecord "BIP39"
     gen <- newStdGen
 
-    getRecord "BIP39" >>= \case
-        Command 128 -> printMnemonic $ mnemonic (generateEntropy gen Strength128)
-        Command 160 -> printMnemonic $ mnemonic (generateEntropy gen Strength160)
-        Command 192 -> printMnemonic $ mnemonic (generateEntropy gen Strength192)
-        Command 224 -> printMnemonic $ mnemonic (generateEntropy gen Strength224)
-        Command 256 -> printMnemonic $ mnemonic (generateEntropy gen Strength256)
-        Command x   -> error $ "Invalid strength " <> show x
-  where
-    printMnemonic = putStrLn . intercalate "\n" . fmap show . toWords
+    case fromBitCount numBits of
+        Just str -> do
+            putStrLn $ "Generating mnemonic with " <> show (bitCount str) <> " bits of entropy. Using seed " <> show gen
+
+            let mnemonic = toMnemonic (generateEntropy gen str)
+                wordStrings = fmap show (toWords mnemonic)
+                formattedWords = "  " <> intercalate "\n  " wordStrings
+
+            putStrLn formattedWords
+        Nothing  -> error $ "Invalid strength " <> show numBits

@@ -4,6 +4,10 @@ Haskell implementation of [the bip39 protocol](https://github.com/bitcoin/bips/b
 
 Note: only the default wordlist is supported.
 
+TODO:
+  * support mnemonic to seed
+  * add `fromWordList :: [BIP39Word] -> Maybe Mnemonic`
+
 ```
 CS = ENT / 32
 MS = (ENT + CS) / 11
