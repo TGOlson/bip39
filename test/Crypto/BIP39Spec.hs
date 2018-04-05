@@ -16,12 +16,12 @@ spec = describe "Crypto.BIP39Spec" $ do
     it "should create the expected mnemonic for all test cases" $
         allTestCases $ \(TestCase entropyHex expectedWordList _) ->
             let entropy = hexToEntropy entropyHex
-            in toWords (mnemonic entropy) == expectedWordList
+            in toWords (toMnemonic entropy) == expectedWordList
 
     it "should round trip serialize for all test cases" $
         allTestCases $ \(TestCase entropyHex _ _) ->
             let entropy = hexToEntropy entropyHex
-            in toEntropy (mnemonic entropy) == entropy
+            in toEntropy (toMnemonic entropy) == entropy
 
 allTestCases :: (TestCase -> Bool) -> Bool
 allTestCases = flip all testCases

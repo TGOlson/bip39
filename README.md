@@ -4,6 +4,12 @@ Haskell implementation of [the bip39 protocol](https://github.com/bitcoin/bips/b
 
 Note: only the default wordlist is supported.
 
+```
+$ stack build
+$ stack test
+$ stack exec -- bip39 <128/160/192/224/256>
+```
+
 TODO:
   * support mnemonic to seed
   * add `fromWordList :: [BIP39Word] -> Maybe Mnemonic`
