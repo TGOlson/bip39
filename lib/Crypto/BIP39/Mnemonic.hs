@@ -3,7 +3,7 @@ module Crypto.BIP39.Mnemonic
     , toWords
     , toMnemonic
     , toEntropy
-    -- , fromWordList -- TODO: return maybe, verify checksum
+    , fromWordList
     ) where
 
 import           Control.Monad
@@ -44,6 +44,13 @@ toEntropy (Mnemonic ws) = forceEntropy entropyBytes
     allBytes = indicesToBytes (seedToIndices ws)
     forceEntropy = fromMaybe (error "unexpected error converting back to entropy") . Entropy.entropy
 
+fromWordList :: [WordList.BIP39Word] -> Maybe Mnemonic
+fromWordList wordList = if validLength && doesRoundtrip then Just mnemonic else Nothing
+  where
+    mnemonic = Mnemonic wordList
+    validLength = length wordList `elem` [12, 15, 18, 21, 24]
+    doesRoundtrip = toMnemonic (toEntropy mnemonic) == mnemonic
+
 seedToIndices :: [WordList.BIP39Word] -> [Int]
 seedToIndices ws = (`Set.findIndex` WordList.wordList) <$> ws
 
@@ -55,12 +62,6 @@ indicesToBytes ixs = L8.toStrict $ runPut (runBitPut bitPut)
 
     bitPut :: BitPut ()
     bitPut = void $ sequence $ putWord16be 11 <$> ws
-
-
--- verifyChecksum :: Mnemonic -> Bool
--- verifyChecksum mn = calcChecksum (B.take 32 bytes) == B.drop 32 bytes
---   where
---     bytes = Entropy.bytes (toEntropy mn)
 
 
 calcChecksum :: B.ByteString -> B.ByteString

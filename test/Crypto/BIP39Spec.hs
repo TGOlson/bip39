@@ -1,6 +1,8 @@
 module Crypto.BIP39Spec ( spec ) where
 
 import           Test.Hspec
+import           Test.Hspec.QuickCheck
+import           Test.QuickCheck
 
 import qualified Data.ByteString       as B
 import           Data.Maybe
@@ -9,6 +11,7 @@ import           Numeric
 
 import qualified Crypto.BIP39.Entropy  as Entropy
 import           Crypto.BIP39.Mnemonic
+import qualified Crypto.BIP39.WordList as WordList
 import           TestData
 
 spec :: Spec
@@ -22,6 +25,25 @@ spec = describe "Crypto.BIP39Spec" $ do
         allTestCases $ \(TestCase entropyHex _ _) ->
             let entropy = hexToEntropy entropyHex
             in toEntropy (toMnemonic entropy) == entropy
+
+    it "should recreate mnemonics from valid words lists" $
+        allTestCases $ \(TestCase _ ws _) ->
+            (toWords <$> fromWordList ws) == Just ws
+
+    -- TODO: think of a better test, this will fail roughly every 92k runs
+    prop "should not recreate mnemonics from invalid words lists" $
+        isNothing . fromWordList . unInvalidWordList
+
+newtype InvalidWordList = InvalidWordList { unInvalidWordList :: [WordList.BIP39Word] }
+  deriving (Show)
+
+instance Arbitrary InvalidWordList where
+    arbitrary = do
+        n <- choose (0, 50 :: Int)
+
+        ws <- vectorOf n $ elements [minBound .. maxBound]
+
+        return $ InvalidWordList ws
 
 allTestCases :: (TestCase -> Bool) -> Bool
 allTestCases = flip all testCases
